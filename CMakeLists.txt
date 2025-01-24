@@ -5,6 +5,11 @@ project(CapVision VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Auto MOC for Qt
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
 # Explicit path for libs
 set(OpenCV_DIR "D:/Packages/opencv-4.10.0/build")
 set(Qt6_DIR "D:/Programs/Qt/6.7.3/msvc2022_64/lib/cmake/Qt6")

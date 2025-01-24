@@ -67,3 +67,4 @@ resources/models/*.fbx
 # Python virtual environment (if used for scripts)
 venv/
 env/
+.clangd
