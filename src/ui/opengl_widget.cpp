@@ -43,7 +43,23 @@ void OpenGLWidget::initializeGL() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+
+    // Load 3D model
+    try {
+        model_ = std::make_unique<Model3D>("resources/models/cap/10131_BaseballCap_v2_L3.obj");  // Ajustez le chemin selon votre modèle
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to load model: " << e.what() << std::endl;
+    }
+
+    // Initialize view matrix
+    view_ = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 3.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f)
+    );
 }
+
 
 void OpenGLWidget::setupShaders() {
     if (!videoShader_.loadFromString(videoVertexShaderSource_, videoFragmentShaderSource_)) {
@@ -97,9 +113,49 @@ void OpenGLWidget::renderVideo() {
 }
 
 void OpenGLWidget::renderModel() {
-    // Will be implemented in the next step
-}
+    if (!model_ || !faceResult_.success) return;
 
+    modelShader_.use();
+
+    // Update model matrix based on face detection results
+    modelMatrix_ = glm::mat4(1.0f);
+    
+    // Position the model at the nose position
+    glm::vec3 nosePosition(
+        faceResult_.landmarks[30].x,
+        faceResult_.landmarks[30].y,
+        0.0f
+    );
+    
+    // Convert from screen space to world space
+    float screenX = (nosePosition.x / width() - 0.5f) * 2.0f;
+    float screenY = -(nosePosition.y / height() - 0.5f) * 2.0f;
+    
+    modelMatrix_ = glm::translate(modelMatrix_, glm::vec3(screenX, screenY, 0.0f));
+    
+    // Apply rotation from face detection
+    glm::mat4 rotationMatrix(faceResult_.rotation_matrix.at<double>(0,0), faceResult_.rotation_matrix.at<double>(0,1), faceResult_.rotation_matrix.at<double>(0,2), 0.0f,
+                            faceResult_.rotation_matrix.at<double>(1,0), faceResult_.rotation_matrix.at<double>(1,1), faceResult_.rotation_matrix.at<double>(1,2), 0.0f,
+                            faceResult_.rotation_matrix.at<double>(2,0), faceResult_.rotation_matrix.at<double>(2,1), faceResult_.rotation_matrix.at<double>(2,2), 0.0f,
+                            0.0f, 0.0f, 0.0f, 1.0f);
+    
+    modelMatrix_ *= rotationMatrix;
+    
+    // Apply scale
+    modelMatrix_ = glm::scale(modelMatrix_, glm::vec3(modelScale_));
+
+    // Set shader uniforms
+    modelShader_.setMat4("projection", glm::value_ptr(projection_));
+    modelShader_.setMat4("view", glm::value_ptr(view_));
+    modelShader_.setMat4("model", glm::value_ptr(modelMatrix_));
+
+    // Set lighting uniforms
+    modelShader_.setVec3("lightPos", 0.0f, 0.0f, 2.0f);
+    modelShader_.setVec3("viewPos", 0.0f, 0.0f, 3.0f);
+
+    // Render the model
+    model_->render(modelShader_);
+}
 
 void OpenGLWidget::setupQuad() {
     float vertices[] = {

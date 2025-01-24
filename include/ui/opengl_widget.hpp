@@ -6,6 +6,7 @@
 #include <opencv2/opencv.hpp>
 #include "../../include/core/face_detector.hpp"
 #include "../../include/ui/shader.hpp"
+#include "../../include/ui/model3d.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -29,7 +30,6 @@ protected:
     void resizeGL(int w, int h) override;
 
 private:
-    // Existing members
     cv::Mat currentFrame_;
     core::FaceDetector::FaceDetectionResult faceResult_;
     bool hasNewFrame_{false};
@@ -37,11 +37,19 @@ private:
     Shader videoShader_;  // Renamed from shader_
     GLuint quadVAO_{0}, quadVBO_{0}, quadEBO_{0};
 
-    // New members for 3D rendering
     Shader modelShader_;
     glm::mat4 projection_{1.0f};
     glm::mat4 view_{1.0f};
     float aspectRatio_{1.0f};
+
+    std::unique_ptr<Model3D> model_;
+    glm::mat4 modelMatrix_{1.0f};
+    
+
+    // for models transformations
+    float modelScale_{1.0f};
+    glm::vec3 modelPosition_{0.0f, 0.0f, 0.0f};
+    glm::vec3 modelRotation_{0.0f, 0.0f, 0.0f};
 
     // Setup functions
     void setupQuad();
