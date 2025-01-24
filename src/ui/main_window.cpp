@@ -17,29 +17,39 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow() = default;
 
 void MainWindow::setupUi() {
+    // Create central widget and layout
     auto centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
     
     auto layout = new QVBoxLayout(centralWidget);
+    layout->setContentsMargins(0, 0, 0, 0);
     
+    // Setup video widget
     videoWidget_ = new VideoWidget(this);
     layout->addWidget(videoWidget_);
     
+    // Set default window size
     resize(800, 600);
     
+    // Setup timer for frame updates
     updateTimer_ = new QTimer(this);
     connect(updateTimer_, &QTimer::timeout, this, &MainWindow::updateFrame);
-    updateTimer_->start(33);
+    updateTimer_->start(33); // ~30 FPS
 }
 
 void MainWindow::initializeCamera() {
+    // Initialize camera
     camera_.open(0);
     if (!camera_.isOpened()) {
-        // TODO: Gérer l'erreur
+        // TODO: Add error handling
         return;
     }
     
-    faceDetector_.initialize();
+    // Initialize face detector
+    if (!faceDetector_.initialize()) {
+        // TODO: Add error handling
+        exit(1);
+    }
 }
 
 void MainWindow::updateFrame() {
@@ -48,11 +58,14 @@ void MainWindow::updateFrame() {
         return;
     }
     
-    cv::Rect faceRect;
-    if (faceDetector_.detectFace(frame, faceRect)) {
-        cv::rectangle(frame, faceRect, cv::Scalar(0, 255, 0), 2);
+    // Detect face and get results
+    auto result = faceDetector_.detectFace(frame);
+    if (result.success) {
+        // Draw face information using FaceVisualizer
+        FaceVisualizer::drawFaceInfo(frame, result, visualizerOptions_);
     }
     
+    // Update display
     videoWidget_->updateFrame(frame);
 }
 

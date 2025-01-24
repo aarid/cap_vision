@@ -4,6 +4,7 @@
 #include <opencv2/opencv.hpp>
 #include "../../include/ui/video_widget.hpp"
 #include "../../include/core/face_detector.hpp"
+#include "../../include/ui/face_visualizer.hpp"
 
 namespace capvision {
 namespace ui {
@@ -22,11 +23,16 @@ private:
     void setupUi();
     void initializeCamera();
 
-
+    // UI components
     VideoWidget* videoWidget_{nullptr};
+    QTimer* updateTimer_{nullptr};
+
+    // Core components
     cv::VideoCapture camera_;
     core::FaceDetector faceDetector_;
-    QTimer* updateTimer_{nullptr};
+
+    // Visualization options
+    FaceVisualizer::Options visualizerOptions_;
 };
 
 } // namespace ui
