@@ -23,6 +23,7 @@ set(GLEW_ROOT "D:/Programs/glew-2.1.0")
 set(dlib_DIR "D:/Programs/vcpkg/installed/x64-windows/share/dlib")
 set(FFTW3_DIR "D:/Programs/vcpkg/installed/x64-windows/share/fftw3")
 set(unofficial-sqlite3_DIR "D:/Programs/vcpkg/installed/x64-windows/share/unofficial-sqlite3")
+set(GLM_DIR "D:/Programs/vcpkg/installed/x64-windows/share/glm")
 
 
 # Config lib GLEW for OpenGL 
@@ -45,6 +46,7 @@ find_package(OpenCV REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(Qt6 COMPONENTS Core Widgets OpenGLWidgets REQUIRED)
 find_package(dlib CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
 # Create executable
 add_executable(${PROJECT_NAME} ${LIB_SOURCES} ${HEADERS})
@@ -54,7 +56,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     ${OpenCV_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
-    ${GLEW_INCLUDE_DIR}
+    ${GLEW_INCLUDE_DIR}  ${GLM_DIR}
 )
 
 # Link libraries
@@ -67,4 +69,5 @@ target_link_libraries(${PROJECT_NAME}
     Qt::Core
     Qt::Widgets
     Qt::OpenGLWidgets
+    glm::glm
 )
