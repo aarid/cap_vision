@@ -19,11 +19,14 @@ set(OpenCV_DIR "D:/Packages/opencv-4.10.0/build")
 set(Qt6_DIR "D:/Programs/Qt/6.7.3/msvc2022_64/lib/cmake/Qt6")
 set(GLEW_ROOT "D:/Programs/glew-2.1.0")
 
-# Paths for dlib face detection
+# Paths for dlib face detection and others
 set(dlib_DIR "D:/Programs/vcpkg/installed/x64-windows/share/dlib")
 set(FFTW3_DIR "D:/Programs/vcpkg/installed/x64-windows/share/fftw3")
 set(unofficial-sqlite3_DIR "D:/Programs/vcpkg/installed/x64-windows/share/unofficial-sqlite3")
+
+# Paths 3d libs
 set(GLM_DIR "D:/Programs/vcpkg/installed/x64-windows/share/glm")
+set(Stb_INCLUDE_DIR "${VCPKG_ROOT}/installed/x64-windows/include")
 
 
 # Config lib GLEW for OpenGL 
@@ -43,10 +46,13 @@ file(GLOB_RECURSE HEADERS
 
 # Find required packages
 find_package(OpenCV REQUIRED)
+
 find_package(OpenGL REQUIRED)
 find_package(Qt6 COMPONENTS Core Widgets OpenGLWidgets REQUIRED)
+
 find_package(dlib CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
 
 # Create executable
 add_executable(${PROJECT_NAME} ${LIB_SOURCES} ${HEADERS})
@@ -56,18 +62,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     ${OpenCV_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
-    ${GLEW_INCLUDE_DIR}  ${GLM_DIR}
+    ${GLEW_INCLUDE_DIR}  ${GLM_DIR} ${Stb_INCLUDE_DIR}
 )
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-    ${OpenCV_LIBS}
-    ${OPENGL_LIBRARIES}
-    ${GLEW_LIB}
-    dlib::dlib
-    Qt::Core
-    Qt::Widgets
-    Qt::OpenGLWidgets
-    glm::glm
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    ${OpenCV_LIBS} ${OPENGL_LIBRARIES}
+    ${GLEW_LIB} Qt::Core Qt::Widgets Qt::OpenGLWidgets
+    dlib::dlib glm::glm assimp::assimp
 )
