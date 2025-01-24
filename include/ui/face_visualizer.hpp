@@ -11,9 +11,9 @@ public:
     // Visualization options structure
     struct Options {
         bool showLandmarks{true};
-        bool showPoseAxes{true};
+        bool showPoseAxes{false};
         bool showFaceRect{true};
-        bool showEulerAngles{true};
+        bool showEulerAngles{false};
         
         // Visualization parameters
         cv::Scalar landmarkColor{0, 0, 255};    // Red
@@ -36,6 +36,7 @@ public:
                                   const std::vector<cv::Point2f>& landmarks,
                                   const Options& options);
 
+    // TODO debug drawPoseAxes
     static void drawPoseAxes(cv::Mat& frame, 
                             const core::FaceDetector::FaceDetectionResult& result,
                             const Options& options);
@@ -43,6 +44,10 @@ public:
     static void drawEulerAngles(cv::Mat& frame, 
                                const cv::Vec3d& euler_angles,
                                const Options& options);
+private:
+    // Camera matrix and distortion coefficients for axis projection
+    static inline cv::Mat camera_matrix_;
+    static inline cv::Mat dist_coeffs_ = cv::Mat::zeros(4, 1, cv::DataType<double>::type);
 };
 
 } // namespace ui

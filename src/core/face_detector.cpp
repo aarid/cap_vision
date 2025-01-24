@@ -91,17 +91,14 @@ FaceDetector::FaceDetectionResult FaceDetector::detectFace(const cv::Mat& frame)
     // Convert rotation vector to rotation matrix
     cv::Rodrigues(rvec, result.rotation_matrix);
 
-    // Calculate Euler angles
-    // Decompose rotation matrix to get Euler angles
-    double rx, ry, rz;
-    
-    // Get Euler angles in radians
-    ry = asin(result.rotation_matrix.at<double>(2,0));
-    rx = atan2(-result.rotation_matrix.at<double>(2,1), result.rotation_matrix.at<double>(2,2));
-    rz = atan2(-result.rotation_matrix.at<double>(1,0), result.rotation_matrix.at<double>(0,0));
 
-    // Store angles in result
-    result.euler_angles = cv::Vec3d(rx, ry, rz);
+    // Store rotation vector directly (in degrees)
+    // This gives us rotation around X, Y, Z axes directly
+    result.euler_angles = cv::Vec3d(
+        rvec.at<double>(0) * 180.0 / CV_PI,
+        rvec.at<double>(1) * 180.0 / CV_PI,
+        rvec.at<double>(2) * 180.0 / CV_PI
+    );
 
     result.success = true;
     return result;

@@ -100,49 +100,76 @@ void FaceVisualizer::drawFaceConnections(cv::Mat& frame,
             options.connectionColor, options.lineThickness);
 }
 
+
 void FaceVisualizer::drawPoseAxes(cv::Mat& frame,
-                                    const core::FaceDetector::FaceDetectionResult& result,
-                                    const Options& options) {
+                                 const core::FaceDetector::FaceDetectionResult& result,
+                                 const Options& options) {
     if (result.landmarks.empty()) return;
 
+    // Get nose tip position
     cv::Point2f nose = result.landmarks[30];
-    float axisLength = 50.0f;
-    
-    std::vector<cv::Point2f> projectedPoints;
+    float axisLength = 70.0f;
+
+    // Define 3D axis points
     std::vector<cv::Point3f> axisPoints = {
-        cv::Point3f(0.0f, 0.0f, 0.0f),
-        cv::Point3f(axisLength, 0.0f, 0.0f),
-        cv::Point3f(0.0f, -axisLength, 0.0f),
-        cv::Point3f(0.0f, 0.0f, -axisLength)
+        cv::Point3f(0.0f, 0.0f, 0.0f),          // Origin
+        cv::Point3f(axisLength, 0.0f, 0.0f),    // X: right
+        cv::Point3f(0.0f, -axisLength, 0.0f),   // Y: up (negative because Y grows down in image)
+        cv::Point3f(0.0f, 0.0f, axisLength)     // Z: towards camera
     };
 
-    cv::projectPoints(axisPoints, 
-                     cv::Mat(result.euler_angles), 
-                     cv::Mat::zeros(3, 1, CV_64F),
-                     result.rotation_matrix,
-                     cv::Mat::zeros(4, 1, CV_64F),
-                     projectedPoints);
+    // Get camera matrix based on image size
+    if (camera_matrix_.empty()) {
+        float focal_length = frame.cols;
+        camera_matrix_ = (cv::Mat_<double>(3, 3) <<
+            focal_length, 0, frame.cols/2,
+            0, focal_length, frame.rows/2,
+            0, 0, 1);
+    }
 
-    // X, Y, Z axes with fixed colors
-    cv::line(frame, nose, projectedPoints[1], cv::Scalar(0, 0, 255), 2);   // X: Red
-    cv::line(frame, nose, projectedPoints[2], cv::Scalar(0, 255, 0), 2);   // Y: Green
-    cv::line(frame, nose, projectedPoints[3], cv::Scalar(255, 0, 0), 2);   // Z: Blue
+    // Project points
+    std::vector<cv::Point2f> projectedPoints;
+    cv::Mat rvec;
+    cv::Rodrigues(result.rotation_matrix, rvec);
+    cv::Mat tvec = (cv::Mat_<double>(3, 1) << 0, 0, 0);  // Translation at origin
+
+    cv::projectPoints(axisPoints, rvec, tvec, camera_matrix_, dist_coeffs_, projectedPoints);
+
+    // Shift projected points to nose position
+    for (auto& point : projectedPoints) {
+        point += nose;
+    }
+
+    // Draw axes
+    cv::line(frame, projectedPoints[0], projectedPoints[1], cv::Scalar(0, 0, 255), 2);   // X: Red
+    cv::line(frame, projectedPoints[0], projectedPoints[2], cv::Scalar(0, 255, 0), 2);   // Y: Green
+    cv::line(frame, projectedPoints[0], projectedPoints[3], cv::Scalar(255, 0, 0), 2);   // Z: Blue
+
+    // Add labels
+    float labelOffset = 10.0f;
+    cv::putText(frame, "X", projectedPoints[1], cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
+    cv::putText(frame, "Y", projectedPoints[2], cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+    cv::putText(frame, "Z", projectedPoints[3], cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2);
 }
 
 void FaceVisualizer::drawEulerAngles(cv::Mat& frame,
-                                       const cv::Vec3d& euler_angles,
-                                       const Options& options) {
-    double yaw = euler_angles[0] * 180.0 / CV_PI;
-    double pitch = euler_angles[1] * 180.0 / CV_PI;
-    double roll = euler_angles[2] * 180.0 / CV_PI;
+                                    const cv::Vec3d& euler_angles,
+                                    const Options& options) {
+    // Get rotations around each axis in degrees
+    double x_rot = euler_angles[0];
+    double y_rot = euler_angles[1];
+    double z_rot = euler_angles[2];
 
     std::stringstream ss;
     ss << std::fixed << std::setprecision(1)
-       << "Yaw: " << yaw << "°, Pitch: " << pitch << "°, Roll: " << roll << "°";
+       << "X: " << x_rot << "° "
+       << "Y: " << y_rot << "° "
+       << "Z: " << z_rot << "°";
     
     cv::putText(frame, ss.str(), cv::Point(10, 30),
                cv::FONT_HERSHEY_SIMPLEX, 0.7, options.connectionColor, 2);
 }
+
 
 } // namespace ui
 } // namespace capvision
