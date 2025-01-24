@@ -11,15 +11,13 @@ OpenGLWidget::OpenGLWidget(QWidget* parent)
 OpenGLWidget::~OpenGLWidget() {
     makeCurrent();
     if (textureId_) glDeleteTextures(1, &textureId_);
-    if (VAO_) glDeleteVertexArrays(1, &VAO_);
-    if (VBO_) glDeleteBuffers(1, &VBO_);
-    if (EBO_) glDeleteBuffers(1, &EBO_);
+    if (quadVAO_) glDeleteVertexArrays(1, &quadVAO_);
+    if (quadVBO_) glDeleteBuffers(1, &quadVBO_);
+    if (quadEBO_) glDeleteBuffers(1, &quadEBO_);
     doneCurrent();
 }
 
-
 void OpenGLWidget::initializeGL() {
-    // Initialize GLEW
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         std::cerr << "Failed to initialize GLEW" << std::endl;
@@ -27,13 +25,16 @@ void OpenGLWidget::initializeGL() {
     }
 
     initializeOpenGLFunctions();
+    
+    // Enable depth testing
+    glEnable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    // Load and compile shaders
-    if (!shader_.loadFromString(vertexShaderSource_, fragmentShaderSource_)) {
-        std::cerr << "Failed to initialize shaders" << std::endl;
-        return;
-    }
+    // Setup shaders
+    setupShaders();
+
+    // Setup quad for video rendering
+    setupQuad();
 
     // Initialize texture
     glGenTextures(1, &textureId_);
@@ -42,13 +43,65 @@ void OpenGLWidget::initializeGL() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    // Setup quad for rendering
-    setupQuad();
 }
 
+void OpenGLWidget::setupShaders() {
+    if (!videoShader_.loadFromString(videoVertexShaderSource_, videoFragmentShaderSource_)) {
+        std::cerr << "Failed to load video shaders" << std::endl;
+        return;
+    }
+
+    if (!modelShader_.loadFromString(modelVertexShaderSource_, modelFragmentShaderSource_)) {
+        std::cerr << "Failed to load model shaders" << std::endl;
+        return;
+    }
+}
+
+void OpenGLWidget::resizeGL(int w, int h) {
+    glViewport(0, 0, w, h);
+    aspectRatio_ = static_cast<float>(w) / static_cast<float>(h);
+    
+    // Update projection matrix
+    projection_ = glm::perspective(glm::radians(45.0f), aspectRatio_, 0.1f, 100.0f);
+}
+
+void OpenGLWidget::paintGL() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Render video background
+    renderVideo();
+
+    // Render 3D model (will be implemented)
+    renderModel();
+}
+
+void OpenGLWidget::renderVideo() {
+    if (hasNewFrame_) {
+        updateTexture();
+        hasNewFrame_ = false;
+    }
+
+    glDisable(GL_DEPTH_TEST);  // Disable depth testing for video
+    
+    videoShader_.use();
+    videoShader_.setInt("videoTexture", 0);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, textureId_);
+
+    glBindVertexArray(quadVAO_);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    glEnable(GL_DEPTH_TEST);  // Re-enable depth testing for 3D
+}
+
+void OpenGLWidget::renderModel() {
+    // Will be implemented in the next step
+}
+
+
 void OpenGLWidget::setupQuad() {
-    // Vertex data for a quad with texture coordinates
     float vertices[] = {
         // positions        // texture coords
         -1.0f,  1.0f, 0.0f,  0.0f, 0.0f,  // top left
@@ -62,16 +115,16 @@ void OpenGLWidget::setupQuad() {
         0, 2, 3   // second triangle
     };
 
-    glGenVertexArrays(1, &VAO_);
-    glGenBuffers(1, &VBO_);
-    glGenBuffers(1, &EBO_);
+    glGenVertexArrays(1, &quadVAO_);
+    glGenBuffers(1, &quadVBO_);
+    glGenBuffers(1, &quadEBO_);
 
-    glBindVertexArray(VAO_);
+    glBindVertexArray(quadVAO_);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO_);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO_);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO_);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadEBO_);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // Position attribute
@@ -86,25 +139,6 @@ void OpenGLWidget::setupQuad() {
     glBindVertexArray(0);
 }
 
-void OpenGLWidget::paintGL() {
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    if (hasNewFrame_) {
-        updateTexture();
-        hasNewFrame_ = false;
-    }
-
-    shader_.use();
-    shader_.setInt("videoTexture", 0);  // Set texture unit 0
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureId_);
-
-    glBindVertexArray(VAO_);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-}
-
 void OpenGLWidget::updateTexture() {
     if (currentFrame_.empty()) return;
 
@@ -114,11 +148,6 @@ void OpenGLWidget::updateTexture() {
                  GL_RGB, GL_UNSIGNED_BYTE, currentFrame_.data);
 }
 
-
-void OpenGLWidget::resizeGL(int w, int h)
-{
-    glViewport(0, 0, w, h);
-}
 
 void OpenGLWidget::updateFrame(const cv::Mat& frame,
                              const core::FaceDetector::FaceDetectionResult& face)

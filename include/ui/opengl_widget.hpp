@@ -6,6 +6,9 @@
 #include <opencv2/opencv.hpp>
 #include "../../include/core/face_detector.hpp"
 #include "../../include/ui/shader.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace capvision {
 namespace ui {
@@ -17,7 +20,6 @@ public:
     explicit OpenGLWidget(QWidget* parent = nullptr);
     ~OpenGLWidget();
 
-    // Update frame and face detection results
     void updateFrame(const cv::Mat& frame, 
                     const core::FaceDetector::FaceDetectionResult& face);
 
@@ -27,19 +29,29 @@ protected:
     void resizeGL(int w, int h) override;
 
 private:
-    // Current frame and face detection results
+    // Existing members
     cv::Mat currentFrame_;
     core::FaceDetector::FaceDetectionResult faceResult_;
     bool hasNewFrame_{false};
-
-    // OpenGL stuff
     GLuint textureId_{0};
-    void updateTexture();
+    Shader videoShader_;  // Renamed from shader_
+    GLuint quadVAO_{0}, quadVBO_{0}, quadEBO_{0};
 
-    ui::Shader shader_;
-    
-    // Shaders source
-    const std::string vertexShaderSource_ = R"(
+    // New members for 3D rendering
+    Shader modelShader_;
+    glm::mat4 projection_{1.0f};
+    glm::mat4 view_{1.0f};
+    float aspectRatio_{1.0f};
+
+    // Setup functions
+    void setupQuad();
+    void setupShaders();
+    void updateTexture();
+    void renderVideo();
+    void renderModel();  // Will be implemented later
+
+    // Shader sources
+    const std::string videoVertexShaderSource_ = R"(
         #version 330 core
         layout (location = 0) in vec3 aPos;
         layout (location = 1) in vec2 aTexCoord;
@@ -52,7 +64,7 @@ private:
         }
     )";
 
-    const std::string fragmentShaderSource_ = R"(
+    const std::string videoFragmentShaderSource_ = R"(
         #version 330 core
         out vec4 FragColor;
         
@@ -60,19 +72,61 @@ private:
         uniform sampler2D videoTexture;
         
         void main() {
-            vec4 color = texture(videoTexture, TexCoord);
-            // Ajout d'un effet simple, par exemple une teinte bleue
-            FragColor = vec4(color.r * 0.2, color.g * 0.2, color.b * 1.2, 1.0);
+            FragColor = texture(videoTexture, TexCoord);
         }
     )";
 
-     // Vertex buffer objects
-    GLuint VBO_{0};
-    GLuint VAO_{0};
-    GLuint EBO_{0};
+    // New shaders for 3D rendering
+    const std::string modelVertexShaderSource_ = R"(
+        #version 330 core
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec3 aNormal;
+        layout (location = 2) in vec2 aTexCoord;
 
-    // Setup functions
-    void setupQuad();
+        out vec2 TexCoord;
+        out vec3 Normal;
+        out vec3 FragPos;
+
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
+
+        void main() {
+            FragPos = vec3(model * vec4(aPos, 1.0));
+            Normal = mat3(transpose(inverse(model))) * aNormal;
+            TexCoord = aTexCoord;
+            gl_Position = projection * view * model * vec4(aPos, 1.0);
+        }
+    )";
+
+    const std::string modelFragmentShaderSource_ = R"(
+        #version 330 core
+        out vec4 FragColor;
+
+        in vec2 TexCoord;
+        in vec3 Normal;
+        in vec3 FragPos;
+
+        uniform sampler2D texture_diffuse1;
+        uniform vec3 lightPos;
+        uniform vec3 viewPos;
+
+        void main() {
+            // Basic lighting
+            vec3 norm = normalize(Normal);
+            vec3 lightDir = normalize(lightPos - FragPos);
+            float diff = max(dot(norm, lightDir), 0.0);
+            vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
+
+            // Ambient
+            vec3 ambient = vec3(0.2, 0.2, 0.2);
+
+            // Final color
+            vec4 texColor = texture(texture_diffuse1, TexCoord);
+            vec3 result = (ambient + diffuse) * texColor.rgb;
+            FragColor = vec4(result, texColor.a);
+        }
+    )";
 };
 
 } // namespace ui
