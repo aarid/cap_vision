@@ -1,7 +1,9 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
-#include <memory>
+#include <opencv2/opencv.hpp>
+#include "../../include/ui/video_widget.hpp"
+#include "../../include/core/face_detector.hpp"
 
 namespace capvision {
 namespace ui {
@@ -20,8 +22,11 @@ private:
     void setupUi();
     void initializeCamera();
 
-    class MainWindowPrivate;
-    std::unique_ptr<MainWindowPrivate> d_ptr;
+
+    VideoWidget* videoWidget_{nullptr};
+    cv::VideoCapture camera_;
+    core::FaceDetector faceDetector_;
+    QTimer* updateTimer_{nullptr};
 };
 
 } // namespace ui
