@@ -176,7 +176,9 @@ unsigned int Model3D::textureFromFile(const char* path, const std::string& direc
 }
 
 void Model3D::render(Shader& shader) {
+    std::cout << "Rendering model with " << meshes_.size() << " meshes" << std::endl;
     for(unsigned int i = 0; i < meshes_.size(); i++) {
+        std::cout << "Rendering mesh " << i << std::endl;
         meshes_[i].render(shader);
     }
 }

@@ -42,7 +42,22 @@ private:
     glm::mat4 view_{1.0f};
     float aspectRatio_{1.0f};
 
-    std::unique_ptr<Model3D> model_;
+    std::vector<std::unique_ptr<Model3D>> capModels_;
+    size_t currentCapIndex_{0};
+
+    // Model adjustment parameters
+    struct ModelAdjustments {
+        float scale{0.004f};
+        float verticalOffset{0.2f};
+        float depthOffset{-2.0f};
+        glm::vec3 rotationOffset{0.0f, 180.0f, 0.0f}; // en degrés
+    } modelAdjustments_;
+
+    
+    // Switch cap funtion
+    void switchCap(size_t index);
+    void renderDebugCube();
+
     glm::mat4 modelMatrix_{1.0f};
     
 

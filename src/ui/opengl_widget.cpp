@@ -17,6 +17,16 @@ OpenGLWidget::~OpenGLWidget() {
     doneCurrent();
 }
 
+
+void OpenGLWidget::switchCap(size_t index) {
+    if (index < capModels_.size()) {
+        currentCapIndex_ = index;
+        update();  // Trigger a redraw
+    }
+}
+
+
+
 void OpenGLWidget::initializeGL() {
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
@@ -45,19 +55,35 @@ void OpenGLWidget::initializeGL() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 
-    // Load 3D model
+    // Initialize view matrix
+    view_ = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 2.0f),  // Position de la caméra plus proche
+        glm::vec3(0.0f, 0.0f, 0.0f),  // Point ciblé
+        glm::vec3(0.0f, 1.0f, 0.0f)   // Up vector
+    );
+
+    // Initialize projection matrix
+    float aspectRatio = width() / static_cast<float>(height());
+    projection_ = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
+
+    std::cout << "View matrix:" << std::endl;
+    for(int i = 0; i < 4; i++) {
+        for(int j = 0; j < 4; j++) {
+            std::cout << view_[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+
+    std::cout << "Loading cap model..." << std::endl;
     try {
-        model_ = std::make_unique<Model3D>("resources/models/cap/10131_BaseballCap_v2_L3.obj");  // Ajustez le chemin selon votre modèle
+        capModels_.push_back(std::make_unique<Model3D>("D:/enhanced_projects/cap_vision/resources/models/caps/10131_BaseballCap_v2_L3.obj"));
+        std::cout << "Model loaded successfully" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Failed to load model: " << e.what() << std::endl;
     }
 
-    // Initialize view matrix
-    view_ = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 3.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f)
-    );
+    
 }
 
 
@@ -87,7 +113,7 @@ void OpenGLWidget::paintGL() {
     // Render video background
     renderVideo();
 
-    // Render 3D model (will be implemented)
+    // Render cap model
     renderModel();
 }
 
@@ -113,49 +139,57 @@ void OpenGLWidget::renderVideo() {
 }
 
 void OpenGLWidget::renderModel() {
-    if (!model_ || !faceResult_.success) return;
+    if (capModels_.empty() || !faceResult_.success) return;
 
     modelShader_.use();
 
-    // Update model matrix based on face detection results
-    modelMatrix_ = glm::mat4(1.0f);
-    
-    // Position the model at the nose position
-    glm::vec3 nosePosition(
-        faceResult_.landmarks[30].x,
-        faceResult_.landmarks[30].y,
-        0.0f
-    );
-    
-    // Convert from screen space to world space
-    float screenX = (nosePosition.x / width() - 0.5f) * 2.0f;
-    float screenY = -(nosePosition.y / height() - 0.5f) * 2.0f;
-    
-    modelMatrix_ = glm::translate(modelMatrix_, glm::vec3(screenX, screenY, 0.0f));
-    
-    // Apply rotation from face detection
-    glm::mat4 rotationMatrix(faceResult_.rotation_matrix.at<double>(0,0), faceResult_.rotation_matrix.at<double>(0,1), faceResult_.rotation_matrix.at<double>(0,2), 0.0f,
-                            faceResult_.rotation_matrix.at<double>(1,0), faceResult_.rotation_matrix.at<double>(1,1), faceResult_.rotation_matrix.at<double>(1,2), 0.0f,
-                            faceResult_.rotation_matrix.at<double>(2,0), faceResult_.rotation_matrix.at<double>(2,1), faceResult_.rotation_matrix.at<double>(2,2), 0.0f,
-                            0.0f, 0.0f, 0.0f, 1.0f);
-    
-    modelMatrix_ *= rotationMatrix;
-    
-    // Apply scale
-    modelMatrix_ = glm::scale(modelMatrix_, glm::vec3(modelScale_));
+    // Get face landmarks for positioning
+    cv::Point2f nose = faceResult_.landmarks[30];    // Nose tip
+    cv::Point2f leftEye = faceResult_.landmarks[36]; // Left eye outer corner
+    cv::Point2f rightEye = faceResult_.landmarks[45];// Right eye outer corner
 
-    // Set shader uniforms
+    // Convert screen coordinates to OpenGL coordinates (-1 to 1)
+    float screenX = (nose.x / width() - 0.5f) * 2.0f;
+    float screenY = -(nose.y / height() - 0.5f) * 2.0f;
+
+    // Calculate face width for scaling
+    float faceWidth = cv::norm(rightEye - leftEye);
+    float scale = faceWidth * 0.0004f; // Ajustez ce facteur selon la taille de votre modèle
+
+    modelMatrix_ = glm::mat4(1.0f);
+
+    // Translation
+    modelMatrix_ = glm::translate(modelMatrix_, 
+        glm::vec3(screenX, screenY + 0.2f, -2.0f)); // +0.2f pour placer au-dessus du nez
+
+    // Rotation from face detection
+    cv::Mat rotMat = faceResult_.rotation_matrix;
+    glm::mat4 rotationMatrix(
+        rotMat.at<double>(0,0), rotMat.at<double>(0,1), rotMat.at<double>(0,2), 0.0f,
+        rotMat.at<double>(1,0), rotMat.at<double>(1,1), rotMat.at<double>(1,2), 0.0f,
+        rotMat.at<double>(2,0), rotMat.at<double>(2,1), rotMat.at<double>(2,2), 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    );
+    modelMatrix_ *= rotationMatrix;
+
+    // Scale
+    modelMatrix_ = glm::scale(modelMatrix_, glm::vec3(scale));
+
+    // Additional rotation to align model properly
+    modelMatrix_ = glm::rotate(modelMatrix_, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // Set uniforms
     modelShader_.setMat4("projection", glm::value_ptr(projection_));
     modelShader_.setMat4("view", glm::value_ptr(view_));
     modelShader_.setMat4("model", glm::value_ptr(modelMatrix_));
 
-    // Set lighting uniforms
+    // Lighting
     modelShader_.setVec3("lightPos", 0.0f, 0.0f, 2.0f);
-    modelShader_.setVec3("viewPos", 0.0f, 0.0f, 3.0f);
+    modelShader_.setVec3("viewPos", 0.0f, 0.0f, 2.0f);
 
-    // Render the model
-    model_->render(modelShader_);
+    capModels_[currentCapIndex_]->render(modelShader_);
 }
+
 
 void OpenGLWidget::setupQuad() {
     float vertices[] = {
@@ -217,6 +251,59 @@ void OpenGLWidget::updateFrame(const cv::Mat& frame,
     hasNewFrame_ = true;
     update(); // Trigger repaint
 }
+
+
+void OpenGLWidget::renderDebugCube() {
+    modelShader_.use();
+    
+    glm::mat4 debugMatrix = glm::mat4(1.0f);
+    debugMatrix = glm::translate(debugMatrix, glm::vec3(0.0f, 0.0f, -2.0f));
+    debugMatrix = glm::scale(debugMatrix, glm::vec3(0.2f));
+    
+    modelShader_.setMat4("projection", glm::value_ptr(projection_));
+    modelShader_.setMat4("view", glm::value_ptr(view_));
+    modelShader_.setMat4("model", glm::value_ptr(debugMatrix));
+    
+    // Render a simple cube
+    static const GLfloat vertices[] = {
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+    };
+    
+    static const GLuint indices[] = {
+        0, 1, 2, 2, 3, 0,
+        1, 5, 6, 6, 2, 1,
+        5, 4, 7, 7, 6, 5,
+        4, 0, 3, 3, 7, 4,
+        3, 2, 6, 6, 7, 3,
+        4, 5, 1, 1, 0, 4
+    };
+    
+    GLuint vbo, ebo;
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
+    
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+}
+
 
 } // namespace ui
 } // namespace capvision
