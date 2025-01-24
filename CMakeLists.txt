@@ -43,7 +43,7 @@ file(GLOB_RECURSE HEADERS
 # Find required packages
 find_package(OpenCV REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(Qt6 COMPONENTS Core Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Core Widgets OpenGLWidgets REQUIRED)
 find_package(dlib CONFIG REQUIRED)
 
 # Create executable
@@ -66,4 +66,5 @@ target_link_libraries(${PROJECT_NAME}
     dlib::dlib
     Qt::Core
     Qt::Widgets
+    Qt::OpenGLWidgets
 )
