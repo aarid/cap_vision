@@ -2,7 +2,7 @@
 
 #include <QtWidgets/QMainWindow>
 #include <opencv2/opencv.hpp>
-#include "../../include/ui/video_widget.hpp"
+#include "../../include/ui/opengl_widget.hpp"
 #include "../../include/core/face_detector.hpp"
 #include "../../include/ui/face_visualizer.hpp"
 
@@ -24,7 +24,7 @@ private:
     void initializeCamera();
 
     // UI components
-    VideoWidget* videoWidget_{nullptr};
+    OpenGLWidget* openglWidget_{nullptr};
     QTimer* updateTimer_{nullptr};
 
     // Core components

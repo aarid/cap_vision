@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     initializeCamera();
 }
 
+
 MainWindow::~MainWindow() = default;
 
 void MainWindow::setupUi() {
@@ -25,8 +26,8 @@ void MainWindow::setupUi() {
     layout->setContentsMargins(0, 0, 0, 0);
     
     // Setup video widget
-    videoWidget_ = new VideoWidget(this);
-    layout->addWidget(videoWidget_);
+     openglWidget_ = new OpenGLWidget(this);
+    layout->addWidget(openglWidget_);
     
     // Set default window size
     resize(800, 600);
@@ -66,7 +67,7 @@ void MainWindow::updateFrame() {
     }
     
     // Update display
-    videoWidget_->updateFrame(frame);
+    openglWidget_->updateFrame(frame, result);
 }
 
 } // namespace ui
