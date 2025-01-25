@@ -1,59 +1,25 @@
 # CapVision
 
-CapVision is a real-time Augmented Reality application that allows users to virtually try on different caps using computer vision and 3D rendering technologies.
+A basic AR cap try-on prototype using OpenCV, DLib, and OpenGL. This is an initial version that will be reimplemented using MediaPipe for better 3D face mesh detection.
 
-## Features
+## Dependencies
 
-- Real-time face detection and tracking
-- 3D cap model rendering with OpenGL
-- Dynamic head pose estimation
-- Seamless AR integration
-- User-friendly Qt interface
-
-## Technologies
-
-- C++17
-- OpenCV for computer vision
-- OpenGL for 3D rendering
-- Qt for GUI
-- CMake build system
-
-## Building from Source
-
-### Prerequisites
-
-- CMake 3.15+
-- C++17 compatible compiler
-- OpenCV 4.x
-- Qt 5.x/6.x
-- OpenGL 4.x
-
-### Build Instructions
+All dependencies can be installed using vcpkg:
 
 ```bash
-git clone https://github.com/YourUsername/cap_vision.git
-cd cap_vision
-mkdir build && cd build
-cmake ..
-make
+vcpkg install opencv:x64-windows
+vcpkg install dlib:x64-windows
+vcpkg install glew:x64-windows
+vcpkg install glm:x64-windows
+vcpkg install qt6:x64-windows
+vcpkg install stb:x64-windows
 ```
 
-## Project Structure
+## Project Status
 
-```
-cap_vision/
-├── src/             # Source files
-├── include/         # Header files
-├── tests/           # Unit tests
-├── resources/       # 3D models, shaders, etc.
-├── docs/           # Documentation
-└── CMakeLists.txt  # Build configuration
-```
+This is a prototype version demonstrating:
+- Face detection and landmarks using DLib
+- Basic OpenGL rendering
+- Qt-based UI
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](https://choosealicense.com/licenses/mit/) file for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+The project will be reimplemented using MediaPipe for improved 3D face mesh detection.
