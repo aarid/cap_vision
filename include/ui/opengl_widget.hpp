@@ -47,10 +47,10 @@ private:
 
     // Model adjustment parameters
     struct ModelAdjustments {
-        float scale{0.004f};
-        float verticalOffset{0.2f};
-        float depthOffset{-2.0f};
-        glm::vec3 rotationOffset{0.0f, 180.0f, 0.0f}; // en degrés
+        float scale{0.0008f};         // Cap size           
+        float verticalOffset{0.42f};   // Dist vertical with nose          
+        float depthOffset{-3.0f};     // Dist from camera          
+        glm::vec3 rotationOffset{-90.0f, 180.0f, 0.0f}; // additional rotation in degrees
     } modelAdjustments_;
 
     
@@ -139,17 +139,24 @@ private:
             vec3 norm = normalize(Normal);
             vec3 lightDir = normalize(lightPos - FragPos);
             float diff = max(dot(norm, lightDir), 0.0);
-            vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
+            vec3 diffuse = diff * vec3(1.0);
 
             // Ambient
-            vec3 ambient = vec3(0.2, 0.2, 0.2);
+            vec3 ambient = vec3(0.3);
+
+            // Get texture color
+            vec4 texColor = texture(texture_diffuse1, TexCoord);
+            
+            // Discard fully transparent pixels
+            if(texColor.a < 0.1)
+                discard;
 
             // Final color
-            vec4 texColor = texture(texture_diffuse1, TexCoord);
             vec3 result = (ambient + diffuse) * texColor.rgb;
-            FragColor = vec4(result, texColor.a);
+            FragColor = vec4(result, 1.0); // Force opaque
         }
     )";
+    
 };
 
 } // namespace ui
